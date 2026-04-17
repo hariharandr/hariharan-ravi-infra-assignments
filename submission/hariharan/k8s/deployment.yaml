@@ -20,16 +20,26 @@ spec:
             - containerPort: 8080
           env:
             - name: DATABASE_URL
-              value: postgres://postgres:secret@host.docker.internal:5432/configdb
+              valueFrom:
+                secretKeyRef:
+                  name: config-service-secret
+                  key: DATABASE_URL
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: config-service-config
+                  key: PORT
           livenessProbe:
             httpGet:
               path: /ping
               port: 8080
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /ping
               port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 3
