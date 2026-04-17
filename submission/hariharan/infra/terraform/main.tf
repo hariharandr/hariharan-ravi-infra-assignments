@@ -39,9 +39,9 @@ resource "kubernetes_secret" "db_credentials" {
   }
 
   data = {
-    DATABASE_URL = base64encode("postgres://configuser:configsecret@postgres-postgresql.config-service.svc.cluster.local:5432/configdb")
-    DB_PASSWORD  = base64encode("configsecret")
-    DB_USER      = base64encode("configuser")
+    DATABASE_URL = "postgres://configuser:configsecret@postgres-postgresql.config-service.svc.cluster.local:5432/configdb"
+    DB_PASSWORD  = "configsecret"
+    DB_USER      = "configuser"
   }
 
   type = "Opaque"
@@ -52,7 +52,7 @@ resource "helm_release" "postgres" {
   repository = "oci://registry-1.docker.io/bitnamicharts"
   chart      = "postgresql"
   namespace  = kubernetes_namespace.config_service.metadata[0].name
-  version = "18.5.23"
+  version    = "18.5.23"
 
   set {
     name  = "auth.username"
