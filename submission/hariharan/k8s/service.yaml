@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: config-service
+  namespace: config-service
 spec:
   type: NodePort
   selector:
