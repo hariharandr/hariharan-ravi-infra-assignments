@@ -1,1 +1,4 @@
 server
+.terraform/
+*.tfstate
+*.tfstate.backup
