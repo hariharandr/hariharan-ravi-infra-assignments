@@ -150,16 +150,6 @@ Deletes the entire cluster and everything inside it.
 
 ---
 
-## Rebuild after code change
-
-```bash
-make build
-make load
-make restart
-```
-
----
-
 ## Observability — Liveness and Readiness Probes
 
 The app is health-checked by Kubernetes automatically via `/ping`.
@@ -277,6 +267,16 @@ Returns config by ID.
 Error responses:
 
 - `404` — config not found
+
+---
+
+## Rebuild after code change
+
+```bash
+make build
+make load
+make restart
+```
 
 ---
 
