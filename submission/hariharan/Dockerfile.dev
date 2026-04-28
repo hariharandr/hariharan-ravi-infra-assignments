@@ -1,0 +1,56 @@
+FROM golang:1.26
+
+ENV TERRAFORM_VERSION=1.9.8
+ENV KIND_VERSION=0.24.0
+ENV HELM_VERSION=3.16.3
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    wget \
+    unzip \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Docker CLI — detect architecture automatically
+RUN ARCH=$(dpkg --print-architecture) \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg \
+       | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=${ARCH} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] \
+       https://download.docker.com/linux/debian bookworm stable" \
+       > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install kubectl — detect architecture automatically
+RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') \
+    && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${ARCH}/kubectl" \
+    && chmod +x kubectl \
+    && mv kubectl /usr/local/bin/kubectl
+
+# Install Kind — detect architecture automatically
+RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') \
+    && curl -Lo /usr/local/bin/kind \
+       https://kind.sigs.k8s.io/dl/v${KIND_VERSION}/kind-linux-${ARCH} \
+    && chmod +x /usr/local/bin/kind
+
+# Install Terraform — detect architecture automatically
+RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') \
+    && wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip \
+    && unzip terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip \
+    && mv terraform /usr/local/bin/terraform \
+    && rm terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip
+
+# Install Helm — detect architecture automatically
+RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') \
+    && curl -fsSL https://get.helm.sh/helm-v${HELM_VERSION}-linux-${ARCH}.tar.gz \
+       | tar -xz \
+    && mv linux-${ARCH}/helm /usr/local/bin/helm \
+    && rm -rf linux-${ARCH}
+
+WORKDIR /workspace
+
+CMD ["/bin/bash"]

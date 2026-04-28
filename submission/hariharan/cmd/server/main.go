@@ -15,7 +15,6 @@ import (
 )
 
 func main() {
-	// --- Config (from env) ---
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL is required")
@@ -23,19 +22,22 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // default
+		port = "8080"
 	}
 
-	// --- DB connection with retry ---
+	// Connect with retry
 	pool := connectWithRetry(dbURL)
 	defer pool.Close()
 
-	// --- Dependency wiring ---
+	// Run migrations automatically on startup
+	// This is safe to run multiple times — uses CREATE TABLE IF NOT EXISTS
+	runMigrations(pool)
+
+	// Wire layers
 	repo := repository.New(pool)
 	svc := service.New(repo)
 	h := handler.New(svc)
 
-	// --- HTTP server ---
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      h.Router(),
@@ -44,14 +46,34 @@ func main() {
 	}
 
 	log.Printf("server starting on port %s", port)
-
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// connectWithRetry tries to connect to DB until success.
-// This is CRITICAL for Kubernetes startup ordering.
+func runMigrations(pool *pgxpool.Pool) {
+	log.Println("running migrations...")
+
+	query := `
+		CREATE TABLE IF NOT EXISTS configs (
+			id         TEXT PRIMARY KEY,
+			host       TEXT NOT NULL,
+			port       INT  NOT NULL,
+			app_name   TEXT NOT NULL,
+			log_level  TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT NOW(),
+			updated_at TIMESTAMP DEFAULT NOW()
+		);
+	`
+
+	_, err := pool.Exec(context.Background(), query)
+	if err != nil {
+		log.Fatalf("migration failed: %v", err)
+	}
+
+	log.Println("migrations complete")
+}
+
 func connectWithRetry(dbURL string) *pgxpool.Pool {
 	var pool *pgxpool.Pool
 	var err error
@@ -60,18 +82,15 @@ func connectWithRetry(dbURL string) *pgxpool.Pool {
 
 	for i := 1; i <= maxAttempts; i++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
 		pool, err = pgxpool.New(ctx, dbURL)
 		cancel()
 
 		if err == nil {
-			// Verify connection actually works
 			pingErr := pool.Ping(context.Background())
 			if pingErr == nil {
 				log.Println("connected to database")
 				return pool
 			}
-
 			err = pingErr
 		}
 
